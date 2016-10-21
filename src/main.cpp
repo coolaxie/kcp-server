@@ -26,7 +26,7 @@ int main()
     KCPServer* server = new KCPServer(options);
     if (!server->Start())
     {
-        printf("server start error|%s\n", server->Error().c_str());
+        printf("server start error");
         exit(0);
     }
 

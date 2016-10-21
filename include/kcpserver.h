@@ -52,8 +52,6 @@ public:
     void KickSession(int conv);
     bool SessionExist(int conv) const;
 
-    const std::string& Error() const;
-
 private:
     bool UDPBind();
     void Clear();
@@ -66,7 +64,6 @@ private:
 
     KCPOptions options_;
     int fd_;
-    std::string error_;
     std::map<int, KCPSession*> sessions_;
     IUINT64 current_clock_;
 };

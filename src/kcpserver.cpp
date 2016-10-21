@@ -23,7 +23,7 @@ KCPOptions::KCPOptions()
 }
 
 KCPServer::KCPServer(const KCPOptions& options) :
-    options_(options), fd_(0), error_(""), current_clock_(0)
+    options_(options), fd_(0), current_clock_(0)
 {
 }
 
@@ -53,11 +53,6 @@ bool KCPServer::Start()
     return ret;
 }
 
-const std::string& KCPServer::Error() const
-{
-    return error_;
-}
-
 void KCPServer::Update()
 {
     current_clock_ = iclock();
@@ -70,13 +65,13 @@ bool KCPServer::Send(int conv, const char* data, int len)
     KCPSession* session = GetSession(conv);
     if (NULL == session)
     {
-        error_ = "no session find";
+        DoErrorLog("no session(%d) find", conv);
         return false;
     }
 
     if (session->Send(data, len) < 0)
     {
-        error_ = "kcp send error";
+        DoErrorLog("session(%d) send data failed", conv);
         return false;
     }
 
@@ -106,7 +101,7 @@ bool KCPServer::UDPBind()
     fd_ = socket(AF_INET, SOCK_DGRAM, 0);
     if (fd_ < 0)
     {
-        error_ = std::string("call socket error|msg:") + strerror(errno);
+        DoErrorLog("call socket error:%s", strerror(errno));
         return false;
     }
 
@@ -114,27 +109,27 @@ bool KCPServer::UDPBind()
     flag |= O_NONBLOCK;
     if (-1 == fcntl(fd_, F_SETFL, flag))
     {
-        error_ = std::string("set socket non block error|msg:") + strerror(errno);
+        DoErrorLog("set socket non block error:%s", strerror(errno));
         return false;
     }
 
     int opt = 1;
     if (0 != setsockopt(fd_, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)))
     {
-        error_ = std::string("set socket reuse addr error|msg:") + strerror(errno);
+        DoErrorLog("set socket reuse addr error:%s", strerror(error));
         return false;
     }
 
     int val = 10 * 1024 * 1024; //10M
     if (0 != setsockopt(fd_, SOL_SOCKET, SO_RCVBUF, &val, sizeof(val)))
     {
-        error_ = std::string("set socket recv buf error|msg:") + strerror(errno);
+        DoErrorLog("set socket recv buf error:%s", strerror(errno));
         return false;
     }
 
     if (0 != setsockopt(fd_, SOL_SOCKET, SO_SNDBUF, &val, sizeof(val)))
     {
-        error_ = std::string("set socket send buf error|msg:") + strerror(errno);
+        DoErrorLog("set socket send buf error:%s", strerror(errno));
         return false;
     }
 
@@ -144,7 +139,7 @@ bool KCPServer::UDPBind()
     server_addr.sin_port = htons(options_.port);
     if (0 != bind(fd_, (const sockaddr*)&server_addr, sizeof(server_addr)))
     {
-        error_ = std::string("call bind error|msg:") + strerror(errno);
+        DoErrorLog("call bind error:%s", strerror(errno));
         return false;
     }
 
@@ -177,7 +172,9 @@ void KCPServer::DoOutput(const KCPAddr& addr, const char* data, int len)
     assert(fd_ > 0);
     if (-1 == sendto(fd_, data, len, 0, (sockaddr*)&addr.sockaddr, addr.sock_len))
     {
-        error_ = std::string("udp send error|msg:") + strerror(errno);
+        DoErrorLog("udp send data size(%d) to address(%s) port(%d) error:%s",
+            len, inet_ntoa(addr.sockaddr.sin_addr), ntohs(addr.sockaddr.sin_port),
+            strerror(errno));
         return;
     }
 }
@@ -195,13 +192,13 @@ void KCPServer::UDPRead()
         ssize_t n = recvfrom(fd_, buf, sizeof(buf), 0, (sockaddr*)&cliaddr, &len);
         if (n < 0) //system call error
         {
-            error_ = std::string("call recvfrom error|msg:") + strerror(errno);
+            DoErrorLog("call recv from error:%s", strerror(errno));
             break;
         }
 
         if (n < KCP_HEAD_LENGTH)
         {
-            error_ = "kcp package len invalid";
+            DoErrorLog("kcp package len(%d) invalid", n);
             break;
         }
 
@@ -227,6 +224,7 @@ void KCPServer::SessionUpdate()
         if (options_.keep_session_time > 0 && 
             current_clock_ > session->LastActiveTime() + options_.keep_session_time)
         {
+            DoErrorLog("conv(%d) timeout, kick it", it->first);
             if (NULL != options_.kick_cb)
             {
                 options_.kick_cb(it->first);

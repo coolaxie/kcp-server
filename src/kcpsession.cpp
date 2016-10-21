@@ -254,6 +254,10 @@ void KCPSession::KCPInput(const sockaddr_in& sockaddr, const socklen_t socklen, 
 
     if (0 != memcmp(&addr_, &sockaddr, sizeof(sockaddr_in))) //endpoint switch address or port
     {
+        server_->DoErrorLog("conv(%d) switch address(%s) port(%d) to address(%s) port(%d)",
+            kcp_->conv, inet_ntoa(addr_.sockaddr.sin_addr), ntohs(addr_.sockaddr.sin_port),
+            inet_ntoa(sockaddr.sin_addr), ntohs(sockaddr.sin_port));
+
         int conv = kcp_->conv;
         Clear();
         kcp_ = NewKCP(conv, this);

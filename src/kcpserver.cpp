@@ -124,15 +124,13 @@ bool KCPServer::UDPBind()
         return false;
     }
 
-    //系统缓冲区大小10*M
-    int val = 10 * 1024 * 1024;
+    int val = 10 * 1024 * 1024; //10M
     if (0 != setsockopt(fd_, SOL_SOCKET, SO_RCVBUF, &val, sizeof(val)))
     {
         error_ = std::string("set socket recv buf error|msg:") + strerror(errno);
         return false;
     }
 
-    val = 10 * 1024 * 1024;
     if (0 != setsockopt(fd_, SOL_SOCKET, SO_SNDBUF, &val, sizeof(val)))
     {
         error_ = std::string("set socket send buf error|msg:") + strerror(errno);
@@ -179,13 +177,8 @@ void KCPServer::DoOutput(const KCPAddr& addr, const char* data, int len)
     if (-1 == sendto(fd_, data, len, 0, (sockaddr*)&addr.sockaddr, addr.sock_len))
     {
         error_ = std::string("udp send error|msg:") + strerror(errno);
-        printf("%s\n", error_.c_str());
         return;
     }
-
-    printf("send udp data sz:%d ip:%s port:%d\n", (int)len, inet_ntoa(addr.sockaddr.sin_addr),
-        ntohs(addr.sockaddr.sin_port));
-
 }
 
 void KCPServer::UDPRead()
@@ -199,20 +192,17 @@ void KCPServer::UDPRead()
         socklen_t len = sizeof(cliaddr);
         memset(&cliaddr, 0, sizeof(cliaddr));
         ssize_t n = recvfrom(fd_, buf, sizeof(buf), 0, (sockaddr*)&cliaddr, &len);
-        if (n < 0) //系统调用出错
+        if (n < 0) //system call error
         {
             error_ = std::string("call recvfrom error|msg:") + strerror(errno);
             break;
         }
 
-        if (n < KCP_HEAD_LENGTH) //kcp包头
+        if (n < KCP_HEAD_LENGTH)
         {
             error_ = "kcp package len invalid";
             break;
         }
-
-        printf("recv udp data sz:%d ip:%s port:%d\n", (int)n, inet_ntoa(cliaddr.sin_addr),
-            ntohs(cliaddr.sin_port));
 
         int conv = ikcp_getconv(buf);
         KCPSession* session = GetSession(conv);
@@ -220,7 +210,6 @@ void KCPServer::UDPRead()
         {
             session = NewKCPSessison(this, KCPAddr(cliaddr, len), conv, current_clock_);
             sessions_[conv] = session;
-            printf("create session:%d\n", conv);
         }
         assert(NULL != session);
         session->KCPInput(cliaddr, len, buf, n, current_clock_);

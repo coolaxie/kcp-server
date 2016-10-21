@@ -25,6 +25,30 @@ class KCPSession;
 
 KCPSession* NewKCPSessison(KCPServer* server, const KCPAddr& addr, int conv, IUINT64 current);
 
+class KCPRingBuffer
+{
+public:
+    static char int BUFFER_SIZE = 64 * 1024; //64K
+
+public:
+    KCPRingBuffer();
+    ~KCPRingBuffer();
+
+    void Clear();
+    int GetUsedSize() const;
+    int GetFreeSize() const;
+    int Write(const char* src, int len);
+    int Read(char* dst, int len);
+    bool ReadNoPop(char* dst, int len) const;
+    int GetBufferSize() const;
+private:
+    int read_pos_;
+    int write_pos_;
+    bool is_empty_;
+    bool is_full_;
+    char buffer_[BUFFER_SIZE];
+    
+};
 class KCPSession
 {
 public:
@@ -41,10 +65,13 @@ public:
     void Output(const char* buf, int len);
 
 private:
+    void Clear();
+
     ikcpcb* kcp_;
     KCPServer* server_;
     KCPAddr addr_;
     IUINT64 last_active_time_;
+    KCPRingBuffer recv_buffer_;
 };
 
 

@@ -3,6 +3,9 @@
 #include "kcpsession.h"
 #include "kcpserver.h"
 
+const int kcp_max_package_size = 4 * 1024; //4K
+const int kcp_package_len_size = 4; //4B
+
 int kcp_output(const char* buf, int len, ikcpcb* kcp, void* ptr)
 {
     assert(NULL != ptr);
@@ -29,6 +32,139 @@ KCPSession* NewKCPSessison(KCPServer* server, const KCPAddr& addr, int conv,
     return session;
 }
 
+KCPRingBuffer::KCPRingBuffer()
+{
+    Clear();
+}
+
+KCPRingBuffer::~KCPRingBuffer()
+{
+}
+
+void KCPRingBuffer::Clear()
+{
+    read_pos_ = 0;
+    write_pos_ = 0;
+    is_full_ = false;
+    is_empty_ = true;
+}
+
+int KCPRingBuffer::GetUsedSize() const
+{
+    if (is_empty_)
+    {
+        return 0;
+    }
+    else if (is_full_)
+    {
+        BUFFER_SIZE;
+    }
+
+    if (write_pos_ > read_pos_)
+    {
+        return write_pos_ - read_pos_;
+    }
+    return BUFFER_SIZE - read_pos_ + write_pos_;
+}
+
+int KCPRingBuffer::GetFreeSize() const
+{
+    return BUFFER_SIZE - GetUsedSize();
+}
+
+int KCPRingBuffer::Write(const char* src, int len)
+{
+    if (len <= 0 || is_full_)
+    {
+        return 0;
+    }
+
+    is_empty_ = false;
+
+    if (write_pos_ >= read_pos_)
+    {
+        int left_size = BUFFER_SIZE - write_pos_;
+        if (left_size > len)
+        {
+            memcmp(buffer_ + write_pos_, src, len);
+            write_pos_ += len;
+            return len;
+        }
+        memcmp(buffer_ + write_pos_, src, left_size);
+        write_pos_ = std::min(read_pos_, len - left_size);
+        memcmp(buffer_, src + left_size, write_pos_);
+        is_full_ = (read_pos_ == write_pos_);
+        return left_size + write_pos_;
+    }
+
+    int can_write_size = std::min(GetFreeSize(), len);
+    memcmp(src, buffer_ + write_pos_, can_write_size);
+    is_full_ = (read_pos_ == write_pos_);
+    return can_write_size;
+}
+
+int KCPRingBuffer::Read(char* dst, int len)
+{
+    if (len <= 0 || is_empty_)
+    {
+        return 0;
+    }
+
+    is_full_ = false;
+
+    if (read_pos_ >= write_pos_)
+    {
+        int left_size = BUFFER_SIZE - read_pos_;
+        if (left_size > len)
+        {
+            memcmp(dst, buffer_ + read_pos_, len);
+            read_pos_ += len;
+            return len;
+        }
+        memcpy(dst, buffer_ + read_pos_, left_size);
+        read_pos_ = std::min(write_pos_, len - left_size);
+        memcmp(dst, buffer_, read_pos_);
+        is_empty_ = (read_pos_ == write_pos_);
+        return left_size + read_pos_;
+    }
+
+    int can_read_size = std::min(GetUsedSize(), len);
+    memcmp(dst, buffer_ + read_pos_, can_read_size);
+    read_pos_ += can_read_size;
+    is_empty_ = (read_pos_ == write_pos_);
+    return can_read_size;
+}
+
+bool KCPRingBuffer::ReadNoPop(char* dst, int len) const
+{
+    if (len <= 0 || GetUsedSize() < len)
+    {
+        return false;
+    }
+
+    if (read_pos_ >= write_pos_)
+    {
+        int left_size = BUFFER_SIZE - read_pos_;
+        int first_copy_size = std::min(left_size, len);
+        memcmp(dst, buffer_ + read_pos_, first_copy_size);
+        if (first_copy_size < len)
+        {
+            memcmp(dst + first_copy_size, buffer_, len - first_copy_size);
+        }
+    }
+    else
+    {
+        memcmp(dst, buffer_ + read_pos_, len);
+    }
+
+    return true;
+}
+
+int KCPRingBuffer::GetBufferSize() const
+{
+    return BUFFER_SIZE;
+}
+
 void KCPSession::Update(IUINT32 current)
 {
     assert(NULL != kcp_);
@@ -36,15 +172,57 @@ void KCPSession::Update(IUINT32 current)
     {
         ikcp_update(kcp_, current);
     }
-    
-    static char buf[4096];
-    int len = ikcp_recv(kcp_, buf, sizeof(buf));
-    if (len < 0)
-    {
-        return;
-    }
 
-    server_->OnKCPRevc(kcp_->conv, buf, len);
+    static char buffer[kcp_max_package_size];
+
+    do //revc kcp package 
+    {
+        int peek_size = ikcp_peeksize();
+
+        if (peek_size < 0) //no kcp package
+        {
+            break;
+        }
+        if (peek_size > recv_buffer_.GetFreeSize()) //buffer not enough
+        {
+            break;
+        }
+        if (peek_size > kcp_max_package_size) //error： kcp package too large
+        {
+            break;
+        }
+
+        int len = ikcp_recv(kcp_, buffer, sizeof(buffer));
+        if (len < 0) //error: kcp revc error
+        {
+            break;
+        }
+
+        assert(len = recv_buffer_.Write(buffer, len));
+    } while (true);
+    
+    do
+    {
+        if (!recv_buffer_.ReadNoPop(buffer, kcp_max_package_size))
+        {
+            break;
+        }
+
+        int package_len = (int)ntohl((u_long)*((IUINT32*)(&buffer[0])));
+        if (package_len > kcp_max_package_size ||
+            package_len > recv_buffer_.GetBufferSize())
+        {
+            //package len too large
+            break;
+        }
+        if (package_len > recv_buffer_.GetUsedSize())
+        {
+            break;
+        }
+
+        assert(package_len == recv_buffer_.Read(buffer, package_len));
+        server_->OnKCPRevc(kcp_->conv, buffer, package_len);
+    } while (true);
 }
 
 int KCPSession::Send(const char* data, int len)
@@ -69,13 +247,12 @@ void KCPSession::KCPInput(const sockaddr_in& sockaddr, const socklen_t socklen, 
     assert(NULL != kcp_);
     assert(NULL != data);
 
-    if (0 != memcmp(&addr_, &sockaddr, sizeof(sockaddr_in))) //对端切换了ip或端口
+    if (0 != memcmp(&addr_, &sockaddr, sizeof(sockaddr_in))) //endpoint switch address or port
     {
         int conv = kcp_->conv;
-        ikcp_release(kcp_);
+        Clear();
         kcp_ = NewKCP(conv, this);
         addr_ = KCPAddr(sockaddr, socklen);
-        printf("kcp endpoint switch address or port|conv:%d\n", conv);
     }
 
     ikcp_input(kcp_, data, sz);
@@ -85,6 +262,16 @@ void KCPSession::KCPInput(const sockaddr_in& sockaddr, const socklen_t socklen, 
 void KCPSession::Output(const char* buf, int len)
 {
     server_->DoOutput(addr_, buf, len);
+}
+
+void KCPSession::Clear()
+{
+    if (NULL != kcp_)
+    {
+        ikcp_release(kcp_);
+        kcp_ = NULL;
+    }
+    recv_buffer_.Clear();
 }
 
 KCPSession::KCPSession(KCPServer* server, const KCPAddr& addr, IUINT64 current) :

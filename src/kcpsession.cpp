@@ -44,10 +44,7 @@ void KCPSession::Update(IUINT32 current)
         return;
     }
 
-    buf[len] = '\0';
     server_->OnKCPRevc(kcp_->conv, buf, len);
-    //»ØÉä·şÎñÆ÷
-    Send(buf, len);
 }
 
 int KCPSession::Send(const char* data, int len)

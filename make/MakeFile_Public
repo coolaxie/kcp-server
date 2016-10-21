@@ -1,0 +1,22 @@
+############################################################
+#some variables
+############################################################
+#CC	= gcc
+#CXX	= g++
+#CPP	= g++
+AR	= ar
+
+###########################################################
+#some flags
+###########################################################
+ARFLAGS = cr
+CPPFLAGS= -fPIC -g -gdwarf-2 -ggdb3 -rdynamic -Wall -Werror $(PUBLIC_INC)
+
+LDFLAGS = -g  -lz -lrt -L/usr/lib/mysql -lmysqlclient_r -L/usr/lib64/mysql -lpthread
+
+
+PUBLIC_INC	= -I/usr/include/mysql
+
+
+SRC = $(wildcard *.cpp) $(wildcard *.c) $(wildcard *.cxx)
+OBJS = $(addprefix $(OBJ_DIR)/,$(subst .cpp,.o,$(SRC))) 

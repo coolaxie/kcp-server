@@ -1,0 +1,5 @@
+*.o
+*.d
+kcp-server
+kcp_server.a
+kcp-demo.v12.suo

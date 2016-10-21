@@ -183,18 +183,22 @@ void KCPSession::Update(IUINT32 current)
         {
             break;
         }
-        if (peek_size > recv_buffer_.GetFreeSize()) //buffer not enough
-        {
-            break;
-        }
         if (peek_size > kcp_max_package_size) //error£º kcp package too large
         {
+            server_->DoErrorLog("kcp peek size(%d) too large", peek_size);
+            break;
+        }
+        if (peek_size > recv_buffer_.GetFreeSize()) //buffer not enough
+        {
+            server_->DoErrorLog("revc buffer remain size(%d) not enough for peek size(%d)",
+                recv_buffer_.GetFreeSize(), peek_size);
             break;
         }
 
         int len = ikcp_recv(kcp_, buffer, sizeof(buffer));
         if (len < 0) //error: kcp revc error
         {
+            server_->DoErrorLog("kcp revc error");
             break;
         }
 
@@ -213,6 +217,7 @@ void KCPSession::Update(IUINT32 current)
             package_len > recv_buffer_.GetBufferSize())
         {
             //package len too large
+            server_->DoErrorLog("package size(%d) too large", package_len);
             break;
         }
         if (package_len > recv_buffer_.GetUsedSize())

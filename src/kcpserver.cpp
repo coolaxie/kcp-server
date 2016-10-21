@@ -19,6 +19,7 @@ KCPOptions::KCPOptions()
     keep_session_time = 5 * 1000; //5s //5000ms
     recv_cb = NULL;
     kick_cb = NULL;
+    error_reporter = NULL;
 }
 
 KCPServer::KCPServer(const KCPOptions& options) :
@@ -244,5 +245,20 @@ void KCPServer::OnKCPRevc(int conv, const char* data, int len)
     {
         options_.recv_cb(conv, data, len);
     }
+}
+
+void KCPServer::DoErrorLog(const char *fmt, ...)
+{
+    if (NULL == options_.error_reporter)
+    {
+        return;
+    }
+
+    static char buffer[1024];
+    va_list argptr;
+    va_start(argptr, fmt);
+    vsprintf(buffer, fmt, argptr);
+    va_end(argptr);
+    options_.error_reporter(buffer);
 }
 

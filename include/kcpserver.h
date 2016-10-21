@@ -22,15 +22,17 @@ inline IUINT64 iclock()
     return value;
 }
 
-typedef void(*kcp_recv_cb_func)(int, const char*, int);
+typedef void(*package_recv_cb_func)(int, const char*, int);
 typedef void(*session_kick_cb_func)(int);
+typedef void(*error_log_reporter)(const char*);
 
 struct KCPOptions
 {
     int port;
     int keep_session_time;
-    kcp_recv_cb_func recv_cb;
+    package_recv_cb_func recv_cb;
     session_kick_cb_func kick_cb;
+    error_log_reporter error_reporter;
 
     KCPOptions();
 };
@@ -60,6 +62,7 @@ private:
     void UDPRead();
     void SessionUpdate();
     void OnKCPRevc(int conv, const char* data, int len);
+    void DoErrorLog(const char *fmt, ...);
 
     KCPOptions options_;
     int fd_;

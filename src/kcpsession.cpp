@@ -217,7 +217,7 @@ void KCPSession::Update(IUINT32 current)
         if (tmp_length == 0xffff) //KCP heart
         {
             assert(4 == recv_buffer_.Read(buffer, 4));
-            server_->DoErrorLog("Revc heart package");
+            //server_->DoErrorLog("Revc heart package");
             continue;
         }
 

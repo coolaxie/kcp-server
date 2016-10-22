@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <unistd.h>
+#include <string.h>
 
 #include "kcpserver.h"
 
@@ -37,6 +38,7 @@ void test_ring_buffer()
             assert(q.Read(buf, 9) == 9);
             buf[9] = 0;
             printf("read from q:%s\n", buf);
+            assert(memcmp(s, buf, 9) == 0);
         }
         assert(q.GetUsedSize() == 0);
     } while (loop--);

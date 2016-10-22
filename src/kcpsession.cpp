@@ -124,7 +124,7 @@ int KCPRingBuffer::Read(char* dst, int len)
         }
         memcpy(dst, buffer_ + read_pos_, left_size);
         read_pos_ = std::min(write_pos_, len - left_size);
-        memcpy(dst, buffer_, read_pos_);
+        memcpy(dst + left_size, buffer_, read_pos_);
         is_empty_ = (read_pos_ == write_pos_);
         return left_size + read_pos_;
     }

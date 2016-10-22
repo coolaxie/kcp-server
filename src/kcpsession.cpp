@@ -3,7 +3,7 @@
 #include "kcpsession.h"
 #include "kcpserver.h"
 
-const int kcp_max_package_size = 4 * 1024; //4K
+const int kcp_max_package_size = 64 * 1024; //64K
 const int kcp_package_len_size = 4; //4B
 
 int kcp_output(const char* buf, int len, ikcpcb* kcp, void* ptr)
@@ -214,7 +214,7 @@ void KCPSession::Update(IUINT32 current)
         }
 
         IUINT32 tmp_length = *((IUINT32*)(&buffer[0]));
-        if (tmp_length == 0xffff) //KCP heart
+        if (tmp_length == 0xffffffffu) //KCP heart
         {
             assert(4 == recv_buffer_.Read(buffer, 4));
             //server_->DoErrorLog("Revc heart package");
@@ -222,6 +222,14 @@ void KCPSession::Update(IUINT32 current)
         }
 
         int package_len = (int)ntohl((u_long)tmp_length);
+
+        if (package_len <= 0)
+        {
+            //package length invalid
+            server_->DoErrorLog("package size(%d) invalid", package_len);
+            break;
+        }
+
         if (package_len > kcp_max_package_size ||
             package_len > recv_buffer_.GetBufferSize())
         {

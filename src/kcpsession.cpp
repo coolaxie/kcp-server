@@ -57,7 +57,7 @@ int KCPRingBuffer::GetUsedSize() const
     }
     else if (is_full_)
     {
-        BUFFER_SIZE;
+        return BUFFER_SIZE;
     }
 
     if (write_pos_ > read_pos_)
@@ -86,19 +86,19 @@ int KCPRingBuffer::Write(const char* src, int len)
         int left_size = BUFFER_SIZE - write_pos_;
         if (left_size > len)
         {
-            memcmp(buffer_ + write_pos_, src, len);
+            memcpy(buffer_ + write_pos_, src, len);
             write_pos_ += len;
             return len;
         }
-        memcmp(buffer_ + write_pos_, src, left_size);
+        memcpy(buffer_ + write_pos_, src, left_size);
         write_pos_ = std::min(read_pos_, len - left_size);
-        memcmp(buffer_, src + left_size, write_pos_);
+        memcpy(buffer_, src + left_size, write_pos_);
         is_full_ = (read_pos_ == write_pos_);
         return left_size + write_pos_;
     }
 
     int can_write_size = std::min(GetFreeSize(), len);
-    memcmp(src, buffer_ + write_pos_, can_write_size);
+    memcpy(buffer_ + write_pos_, src, can_write_size);
     is_full_ = (read_pos_ == write_pos_);
     return can_write_size;
 }
@@ -117,19 +117,19 @@ int KCPRingBuffer::Read(char* dst, int len)
         int left_size = BUFFER_SIZE - read_pos_;
         if (left_size > len)
         {
-            memcmp(dst, buffer_ + read_pos_, len);
+            memcpy(dst, buffer_ + read_pos_, len);
             read_pos_ += len;
             return len;
         }
         memcpy(dst, buffer_ + read_pos_, left_size);
         read_pos_ = std::min(write_pos_, len - left_size);
-        memcmp(dst, buffer_, read_pos_);
+        memcpy(dst, buffer_, read_pos_);
         is_empty_ = (read_pos_ == write_pos_);
         return left_size + read_pos_;
     }
 
     int can_read_size = std::min(GetUsedSize(), len);
-    memcmp(dst, buffer_ + read_pos_, can_read_size);
+    memcpy(dst, buffer_ + read_pos_, can_read_size);
     read_pos_ += can_read_size;
     is_empty_ = (read_pos_ == write_pos_);
     return can_read_size;
@@ -146,15 +146,15 @@ bool KCPRingBuffer::ReadNoPop(char* dst, int len) const
     {
         int left_size = BUFFER_SIZE - read_pos_;
         int first_copy_size = std::min(left_size, len);
-        memcmp(dst, buffer_ + read_pos_, first_copy_size);
+        memcpy(dst, buffer_ + read_pos_, first_copy_size);
         if (first_copy_size < len)
         {
-            memcmp(dst + first_copy_size, buffer_, len - first_copy_size);
+            memcpy(dst + first_copy_size, buffer_, len - first_copy_size);
         }
     }
     else
     {
-        memcmp(dst, buffer_ + read_pos_, len);
+        memcpy(dst, buffer_ + read_pos_, len);
     }
 
     return true;
@@ -177,7 +177,7 @@ void KCPSession::Update(IUINT32 current)
 
     do //revc kcp package 
     {
-        int peek_size = ikcp_peeksize();
+        int peek_size = ikcp_peeksize(kcp_);
 
         if (peek_size < 0) //no kcp package
         {
@@ -252,7 +252,7 @@ void KCPSession::KCPInput(const sockaddr_in& sockaddr, const socklen_t socklen, 
     assert(NULL != kcp_);
     assert(NULL != data);
 
-    if (0 != memcmp(&addr_, &sockaddr, sizeof(sockaddr_in))) //endpoint switch address or port
+    if (0 != memcpy(&addr_, &sockaddr, sizeof(sockaddr_in))) //endpoint switch address or port
     {
         server_->DoErrorLog("conv(%d) switch address(%s) port(%d) to address(%s) port(%d)",
             kcp_->conv, inet_ntoa(addr_.sockaddr.sin_addr), ntohs(addr_.sockaddr.sin_port),

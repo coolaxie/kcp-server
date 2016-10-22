@@ -8,6 +8,7 @@
 #include <sys/epoll.h>
 #include <assert.h>
 #include <fcntl.h>
+#include <stdarg.h>
 
 #include "kcpserver.h"
 
@@ -116,7 +117,7 @@ bool KCPServer::UDPBind()
     int opt = 1;
     if (0 != setsockopt(fd_, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)))
     {
-        DoErrorLog("set socket reuse addr error:%s", strerror(error));
+        DoErrorLog("set socket reuse addr error:%s", strerror(errno));
         return false;
     }
 

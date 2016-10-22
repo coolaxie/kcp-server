@@ -28,7 +28,7 @@ KCPSession* NewKCPSessison(KCPServer* server, const KCPAddr& addr, int conv, IUI
 class KCPRingBuffer
 {
 public:
-    static const int BUFFER_SIZE = 64 * 1024; //64K
+    static const int BUFFER_SIZE = 50; //64K
 
 public:
     KCPRingBuffer();

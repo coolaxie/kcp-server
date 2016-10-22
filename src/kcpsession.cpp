@@ -99,6 +99,7 @@ int KCPRingBuffer::Write(const char* src, int len)
 
     int can_write_size = std::min(GetFreeSize(), len);
     memcpy(buffer_ + write_pos_, src, can_write_size);
+    write_pos_ += can_write_size;
     is_full_ = (read_pos_ == write_pos_);
     return can_write_size;
 }

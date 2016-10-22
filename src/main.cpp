@@ -18,10 +18,35 @@ void isleep(unsigned long millisecond)
     usleep((millisecond << 10) - (millisecond << 4) - (millisecond << 3));
 }
 
-
+void test_ring_buffer()
+{
+    const char* s = "0123456789";
+    char buf[15];
+    int loop = 100;
+    KCPRingBuffer q;
+    do
+    {
+        assert(q.GetUsedSize() == 0);
+        for (int i = 0; i < 5; i++)
+        {
+            assert(9 == q.Write(s, 9));
+        }
+        //assert(q.GetUsedSize() == KCPRingBuffer::BUFFER_SIZE);
+        for (int i = 0; i < 5; i++)
+        {
+            assert(q.Read(buf, 9) == 9);
+            buf[9] = 0;
+            printf("read from q:%s\n", buf);
+        }
+        assert(q.GetUsedSize() == 0);
+    } while (loop--);
+}
 
 int main()
 {
+    test_ring_buffer();
+
+    /*
     KCPOptions options;
     options.recv_cb = on_kcp_revc;
     options.kick_cb = on_session_kick;
@@ -39,6 +64,7 @@ int main()
         isleep(1);
         server->Update();
     }
+    */
 
     return 0;
 }

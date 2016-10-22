@@ -208,7 +208,7 @@ void KCPSession::Update(IUINT32 current)
     
     do
     {
-        if (!recv_buffer_.ReadNoPop(buffer, kcp_max_package_size))
+        if (!recv_buffer_.ReadNoPop(buffer, 4))
         {
             break;
         }

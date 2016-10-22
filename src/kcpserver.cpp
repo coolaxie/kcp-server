@@ -191,9 +191,12 @@ void KCPServer::UDPRead()
         socklen_t len = sizeof(cliaddr);
         memset(&cliaddr, 0, sizeof(cliaddr));
         ssize_t n = recvfrom(fd_, buf, sizeof(buf), 0, (sockaddr*)&cliaddr, &len);
-        if (n < 0) //system call error
+        if (n < 0) 
         {
-            DoErrorLog("call recv from error:%s", strerror(errno));
+            if (EAGAIN != errno) //system call error
+            {
+                DoErrorLog("call recv from error:%s", strerror(errno));
+            }
             break;
         }
 

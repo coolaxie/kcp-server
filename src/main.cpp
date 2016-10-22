@@ -6,12 +6,21 @@
 
 void on_kcp_revc(int conv, const char* data, int len)
 {
-    printf("[RECV] conv=%d data=%s\n", conv, data);
+    assert(len >= 4);
+    char buffer[1024];
+    memcpy(buffer, data, len);
+    buffer[len] = 0;
+    printf("[RECV] conv=%d data=%s len(%d)\n", conv, &buffer[4], len - 4);
 }
 
 void on_session_kick(int conv)
 {
     printf("conv:%d kicked\n", conv);
+}
+
+void on_error_report(const char* data)
+{
+    printf("kcp error:%s\n", data);
 }
 
 void isleep(unsigned long millisecond)
@@ -46,12 +55,14 @@ void test_ring_buffer()
 
 int main()
 {
-    test_ring_buffer();
+    //test_ring_buffer();
 
-    /*
+    
     KCPOptions options;
     options.recv_cb = on_kcp_revc;
     options.kick_cb = on_session_kick;
+    options.error_reporter = on_error_report;
+    options.port = 9528;
     KCPServer* server = new KCPServer(options);
     if (!server->Start())
     {
@@ -66,7 +77,7 @@ int main()
         isleep(1);
         server->Update();
     }
-    */
+    
 
     return 0;
 }

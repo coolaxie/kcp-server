@@ -213,7 +213,15 @@ void KCPSession::Update(IUINT32 current)
             break;
         }
 
-        int package_len = (int)ntohl((u_long)*((IUINT32*)(&buffer[0])));
+        IUINT32 tmp_length = *((IUINT32*)(&buffer[0]));
+        if (tmp_length == 0xffff) //KCP heart
+        {
+            assert(4 == recv_buffer_.Read(buffer, 4));
+            server_->DoErrorLog("Revc heart package");
+            continue;
+        }
+
+        int package_len = (int)ntohl((u_long)tmp_length);
         if (package_len > kcp_max_package_size ||
             package_len > recv_buffer_.GetBufferSize())
         {
@@ -253,7 +261,7 @@ void KCPSession::KCPInput(const sockaddr_in& sockaddr, const socklen_t socklen, 
     assert(NULL != kcp_);
     assert(NULL != data);
 
-    if (0 != memcpy(&addr_, &sockaddr, sizeof(sockaddr_in))) //endpoint switch address or port
+    if (0 != memcmp(&addr_, &sockaddr, sizeof(sockaddr_in))) //endpoint switch address or port
     {
         server_->DoErrorLog("conv(%d) switch address(%s) port(%d) to address(%s) port(%d)",
             kcp_->conv, inet_ntoa(addr_.sockaddr.sin_addr), ntohs(addr_.sockaddr.sin_port),

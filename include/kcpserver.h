@@ -43,6 +43,7 @@ public:
     friend class KCPSession;
 
 public:
+    KCPServer();
     KCPServer(const KCPOptions& options);
     ~KCPServer();
 
@@ -51,6 +52,7 @@ public:
     bool Send(int conv, const char* data, int len);
     void KickSession(int conv);
     bool SessionExist(int conv) const;
+    void SetOption(const KCPOptions& options);
 
 private:
     bool UDPBind();

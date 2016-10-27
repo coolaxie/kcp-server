@@ -20,10 +20,11 @@ ikcpcb* NewKCP(int conv, KCPSession* session)
     assert(NULL != kcp);
     ikcp_setoutput(kcp, kcp_output);
     ikcp_nodelay(kcp, 1, 10, 2, 1);
+    ikcp_setmtu(kcp, 128);
     return kcp;
 }
 
-KCPSession* NewKCPSessison(KCPServer* server, const KCPAddr& addr, int conv, 
+KCPSession* NewKCPSession(KCPServer* server, const KCPAddr& addr, int conv, 
     IUINT64 current)
 {
     KCPSession* session = new KCPSession(server, addr, current);

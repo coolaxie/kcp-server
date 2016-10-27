@@ -14,9 +14,11 @@ OBJ_FILES := $(subst /,-,$(subst $(SRCDIR)/,,$(CPP_FILES:%.cpp=%.o)))
 OBJ_FILES_WITHOUT_MAIN := $(subst /,-,$(subst $(SRCDIR)/,,$(CPP_FILES_WITHOUT_MAIN:%.cpp=%.o)))
 DEP_FILES := $(subst /,-,$(subst $(SRCDIR)/,,$(CPP_FILES:%.cpp=%.d)))
 
-CPPFLAGS += -pipe -std=c++0x -D_SHARED_OBJECT_POOL_USE_TR1 $(INC_DIR)
+#CPPFLAGS += -pipe -std=c++0x -D_SHARED_OBJECT_POOL_USE_TR1 $(INC_DIR)
+CPPFLAGS = -O2 -pipe -std=c++0x -D_SHARED_OBJECT_POOL_USE_TR1 $(INC_DIR)
             
-LDFLAGS += -L./
+#LDFLAGS += -L./
+LDFLAGS = -L./
 
 ARFLAGS = cr
 

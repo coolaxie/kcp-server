@@ -9,7 +9,7 @@ void on_kcp_revc(int conv, const char* data, int len)
     assert(len >= 4);
     char buffer[1024];
     memcpy(buffer, data, len);
-    buffer[len] = 0;
+    buffer[len] = '\0';
     printf("[RECV] conv=%d data=%s len(%d)\n", conv, &buffer[4], len - 4);
 }
 
@@ -63,8 +63,9 @@ int main()
     options.kick_cb = on_session_kick;
     options.error_reporter = on_error_report;
     options.port = 9528;
-    KCPServer* server = new KCPServer(options);
-    if (!server->Start())
+    KCPServer server;
+    server.SetOption(options);
+    if (!server.Start())
     {
         printf("server start error");
         exit(0);
@@ -75,9 +76,8 @@ int main()
     while (true)
     {
         isleep(1);
-        server->Update();
+        server.Update();
     }
-    
 
     return 0;
 }

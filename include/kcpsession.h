@@ -23,12 +23,12 @@ struct KCPAddr
 class KCPServer;
 class KCPSession;
 
-KCPSession* NewKCPSessison(KCPServer* server, const KCPAddr& addr, int conv, IUINT64 current);
+KCPSession* NewKCPSession(KCPServer* server, const KCPAddr& addr, int conv, IUINT64 current);
 
 class KCPRingBuffer
 {
 public:
-    static const int BUFFER_SIZE = 1 * 1024 * 1024; //1M
+    static const int BUFFER_SIZE = 1 * 64 * 1024; //64k //1M
 
 public:
     KCPRingBuffer();

@@ -5,7 +5,6 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
-#include <sys/epoll.h>
 #include <assert.h>
 #include <fcntl.h>
 #include <stdarg.h>
@@ -26,6 +25,11 @@ KCPOptions::KCPOptions()
 KCPServer::KCPServer(const KCPOptions& options) :
     options_(options), fd_(0), current_clock_(0)
 {
+}
+
+KCPServer::KCPServer() : fd_(0), current_clock_(0)
+{
+
 }
 
 KCPServer::~KCPServer()
@@ -94,6 +98,11 @@ void KCPServer::KickSession(int conv)
 bool KCPServer::SessionExist(int conv) const
 {
     return sessions_.find(conv) != sessions_.end();
+}
+
+void KCPServer::SetOption(const KCPOptions& options)
+{
+    options_ = options;
 }
 
 bool KCPServer::UDPBind()
@@ -193,9 +202,9 @@ void KCPServer::UDPRead()
         ssize_t n = recvfrom(fd_, buf, sizeof(buf), 0, (sockaddr*)&cliaddr, &len);
         if (n < 0) 
         {
-            if (EAGAIN != errno) //system call error
+            if (EAGAIN != errno && EINTR != errno) //system call error
             {
-                DoErrorLog("call recv from error:%s", strerror(errno));
+                DoErrorLog("call recv from error(%d):%s", errno, strerror(errno));
             }
             break;
         }
@@ -210,7 +219,7 @@ void KCPServer::UDPRead()
         KCPSession* session = GetSession(conv);
         if (NULL == session)
         {
-            session = NewKCPSessison(this, KCPAddr(cliaddr, len), conv, current_clock_);
+            session = NewKCPSession(this, KCPAddr(cliaddr, len), conv, current_clock_);
             sessions_[conv] = session;
         }
         assert(NULL != session);
@@ -221,7 +230,7 @@ void KCPServer::UDPRead()
 void KCPServer::SessionUpdate()
 {
     IUINT32 current = current_clock_ & 0xfffffffflu;
-    for (auto it = sessions_.begin(); it != sessions_.end(); ++it)
+    for (auto it = sessions_.begin(); it != sessions_.end();)
     {
         KCPSession* session = it->second;
 
@@ -234,9 +243,10 @@ void KCPServer::SessionUpdate()
                 options_.kick_cb(it->first);
             }
             delete session;
-            sessions_.erase(it);
+            it = sessions_.erase(it);
             continue;
         }
+        it++;
         session->Update(current);
     }
 }
@@ -246,6 +256,7 @@ void KCPServer::OnKCPRevc(int conv, const char* data, int len)
     if (NULL != options_.recv_cb)
     {
         options_.recv_cb(conv, data, len);
+        //Send(conv, data, len);
     }
 }
 
@@ -259,7 +270,7 @@ void KCPServer::DoErrorLog(const char *fmt, ...)
     static char buffer[1024];
     va_list argptr;
     va_start(argptr, fmt);
-    vsprintf(buffer, fmt, argptr);
+    vsnprintf(buffer, sizeof(buffer), fmt, argptr);
     va_end(argptr);
     options_.error_reporter(buffer);
 }

@@ -204,7 +204,7 @@ void KCPSession::Update(IUINT32 current)
             break;
         }
 
-        assert(len = recv_buffer_.Write(buffer, len));
+        assert(len == recv_buffer_.Write(buffer, len));
     } while (true);
     
     do

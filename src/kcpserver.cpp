@@ -243,7 +243,7 @@ void KCPServer::SessionUpdate()
                 options_.kick_cb(it->first);
             }
             delete session;
-            it = sessions_.erase(it);
+            sessions_.erase(it++);
             continue;
         }
         it++;
